@@ -8,7 +8,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-## Group memebers
+## Group Memebers
 ```{r, echo = F}
 tibble(
   Name = c('Jianghui Lin', 'Zixu Wang', 'Jack Yan'),
@@ -16,4 +16,14 @@ tibble(
 ) %>% 
 knitr::kable()
 ```
+
+## Project Title HERE
+
+## Data Source
+
+Responses, predictors...
+
+## Data Description
+
+## Planned analyses
 

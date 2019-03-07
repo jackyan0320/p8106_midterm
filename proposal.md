@@ -1,7 +1,7 @@
 Midterm Project Proposal
 ================
 
-Group memebers
+Group Memebers
 --------------
 
 | Name         | UNI    |
@@ -9,3 +9,17 @@ Group memebers
 | Jianghui Lin | jl5172 |
 | Zixu Wang    | zw2541 |
 | Jack Yan     | xy2395 |
+
+Project Title HERE
+------------------
+
+Data Source
+-----------
+
+Responses, predictors...
+
+Data Description
+----------------
+
+Planned analyses
+----------------
