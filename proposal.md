@@ -1,6 +1,11 @@
-proposal
+Midterm Project Proposal
 ================
-Jack Yan
-3/7/2019
 
+Group memebers
+--------------
 
+| Name         | UNI    |
+|:-------------|:-------|
+| Jianghui Lin | jl5172 |
+| Zixu Wang    | zw2541 |
+| Jack Yan     | xy2395 |

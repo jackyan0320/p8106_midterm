@@ -1,15 +1,19 @@
 ---
-title: "proposal"
-author: "Jack Yan"
-date: "3/7/2019"
+title: "Midterm Project Proposal"
 output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
 ```
 
-```{r}
-
+## Group memebers
+```{r, echo = F}
+tibble(
+  Name = c('Jianghui Lin', 'Zixu Wang', 'Jack Yan'),
+  UNI = c('jl5172', 'zw2541', 'xy2395')
+) %>% 
+knitr::kable()
 ```
 
