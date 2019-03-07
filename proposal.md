@@ -10,8 +10,8 @@ Group Memebers
 | Zixu Wang    | zw2541 |
 | Jack Yan     | xy2395 |
 
-Project Title HERE
-------------------
+Categorizing income level with census data
+------------------------------------------
 
 Data Source
 -----------

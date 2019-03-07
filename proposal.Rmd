@@ -17,7 +17,7 @@ tibble(
 knitr::kable()
 ```
 
-## Project Title HERE
+## Categorizing income level with census data
 
 ## Data Source
 
