@@ -1,0 +1,106 @@
+---
+title: "nonlinear_regression"
+author: "Jack Yan"
+date: "4/3/2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(tidyverse)
+library(mgcv)
+```
+
+```{r}
+set.seed(123)
+data = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
+  janitor::clean_names() %>% 
+  na.omit() %>% 
+  filter(year == 2013) %>% 
+  select(-country, -year) 
+data_all = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
+  janitor::clean_names() %>% 
+  na.omit() %>% 
+  select(-year) 
+
+```
+
+```{r}
+trRows = createDataPartition(data$life_expectancy, p = .90, list = FALSE)
+
+train_data = data[trRows,]
+test_data = data[-trRows,]
+```
+
+### Scatter Plots
+```{r}
+# matrix of predictors
+x <- model.matrix(life_expectancy~., data)[,-1]
+# vector of response
+y <- data$life_expectancy
+```
+
+```{r}
+theme1 <- trellis.par.get()
+theme1$plot.symbol$col <- rgb(.2, .4, .2, .5) 
+theme1$plot.symbol$pch <- 16
+theme1$plot.line$col <- rgb(.8, .1, .1, 1) 
+theme1$plot.line$lwd <- 2
+theme1$strip.background$col <- rgb(.0, .2, .6, .2) 
+trellis.par.set(theme1)
+
+featurePlot(x, y, plot = "scatter", labels = c("","Y"),
+            type = c("p"), 
+            layout = c(3, 7)
+            )
+```
+
+### GAM
+
+```{r, eval = F}
+names(data)
+
+fit.gamm = gamm(data = data_all,
+                correlation = corExp(form = ~1 | country),
+                life_expectancy ~ 
+                  status + s(adult_mortality) + s(infant_deaths) + s(alcohol) + s(percentage_expenditure) +
+                s(hepatitis_b) + s(measles) + s(bmi) + s(under_five_deaths) + s(polio) +
+                s(total_expenditure) + s(diphtheria) + s(hiv_aids) + s(gdp) + s(population) +
+                s(thinness_1_19_years) + s(thinness_5_9_years) 
+              )
+
+summary(fit.gamm)
+
+fit.gam1 = gam(data = data, 
+              life_expectancy ~ 
+                status + s(adult_mortality) + s(infant_deaths) + s(alcohol) + s(percentage_expenditure) +
+                s(bmi) + s(under_five_deaths) +
+                s(total_expenditure) + s(diphtheria) + s(hiv_aids) + s(gdp) + s(population) +
+                s(thinness_1_19_years)
+              )
+summary(fit.gam1)
+
+fit.gam2 = gam(data = data, 
+              life_expectancy ~ 
+                status + s(adult_mortality) + infant_deaths + s(alcohol) + s(percentage_expenditure) +
+                s(bmi) + under_five_deaths +
+                total_expenditure + diphtheria + s(hiv_aids) + gdp + s(population) +
+                s(thinness_1_19_years)+ s(schooling) + s(income_composition_of_resources)
+              )
+summary(fit.gam2)
+```
+
+
+```{r}
+# This is the final model for GAM
+fit.gam3 = gam(data = data, 
+              life_expectancy ~ 
+                s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) + s(total_expenditure) +
+                s(thinness_1_19_years) + s(schooling) + s(income_composition_of_resources)
+              )
+summary(fit.gam3)
+par(mfrow = c(3, 3))
+plot(fit.gam3)
+```
+
