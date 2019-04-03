@@ -1,0 +1,103 @@
+---
+title: "Linear_regression"
+author: "Zixu_Wang"
+date: "4/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(caret)
+library(ISLR)
+library(glmnet)
+library(corrplot)
+library(plotmo)
+```
+
+```{r}
+set.seed(123)
+data = read.csv("./data/life_expectancy.csv") %>% 
+  janitor::clean_names() %>% 
+  filter(year == 2013) %>% 
+  select(-country, -year) %>% 
+  na.omit()
+```
+
+```{r}
+trRows = createDataPartition(data$life_expectancy, p = .90, list = FALSE)
+
+train_data = data[trRows,]
+test_data = data[-trRows,]
+```
+
+
+```{r}
+# linear model using least squares
+ls.fit = lm(life_expectancy ~ ., data = train_data)
+
+summary(ls.fit)
+
+ls_test_mse = mean((test_data$life_expectancy - predict(ls.fit, test_data))^2)
+ls_test_mse
+```
+
+```{r}
+# ridge regression model
+x_train = model.matrix(life_expectancy~., train_data)[,-1]
+y_train = train_data$life_expectancy
+
+ctrl1 = trainControl(method = "cv", number = 10)
+
+ridge.fit = train(x = x_train, 
+                  y = y_train,
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 0, 
+                                         lambda = exp(seq(-1, 1, length=100))),
+                  trControl = ctrl1)
+
+plot(ridge.fit, xTrans = function(x) log(x))
+
+ridge.fit$bestTune
+
+x_test = model.matrix(life_expectancy~., test_data)[,-1]
+y_test = test_data$life_expectancy
+
+ridge_test_mse = mean((y_test - predict(ridge.fit, x_test))^2)
+ridge_test_mse
+```
+
+```{r}
+# lasso regression model
+lasso.fit = train(x = x_train, 
+                  y = y_train,
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 1, 
+                                         lambda = exp(seq(-5, 3, length=100))),
+                  trControl = ctrl1)
+
+plot(lasso.fit, xTrans = function(x) log(x))
+
+lasso.fit$bestTune
+
+lasso_test_mse = mean((y_test - predict(lasso.fit, x_test))^2)
+lasso_test_mse
+```
+
+```{r}
+# PCR model
+pcr.fit = train(x = x_train, 
+                y = y_train,
+                method = "pcr",
+                tuneLength = length(train_data),
+                trControl = ctrl1,
+                scale = TRUE)
+
+ggplot(pcr.fit, highlight = TRUE) + theme_bw()
+
+pcr.fit$bestTune
+
+pcr_test_mse = mean((y_test - predict(pcr.fit, x_test))^2)
+pcr_test_mse
+```
+
