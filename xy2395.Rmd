@@ -1,0 +1,37 @@
+---
+title: "xy2395"
+author: "Jack Yan"
+date: "4/2/2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(skimr)
+```
+
+## Import Data
+```{r}
+age <- 
+  read.csv("./data/life_expectancy.csv") %>% 
+  as.tibble() %>% 
+  janitor::clean_names()
+# It's longitudinal data... So We will just use one year to do the modeling.
+
+# We decide to use year 2013
+age %>% distinct(country) %>% nrow
+age %>% filter(year == 2013) %>% nrow
+
+age_2013 <- 
+  age %>% 
+  filter(year == 2013)
+```
+
+
+```{r}
+age_2013 %>% 
+  select(thinness_1_19_years)
+age_2013 %>% skimr::skim()
+```
+
