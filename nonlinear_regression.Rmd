@@ -11,6 +11,7 @@ library(caret)
 library(tidyverse)
 library(mgcv)
 library(modelr)
+library(corrplot)
 ```
 
 ```{r}
@@ -58,11 +59,23 @@ theme1$plot.line$col <- rgb(.8, .1, .1, 1)
 theme1$plot.line$lwd <- 2
 theme1$strip.background$col <- rgb(.0, .2, .6, .2) 
 trellis.par.set(theme1)
-
-featurePlot(x, y, plot = "scatter", labels = c("","Y"),
+data_rename = data %>% 
+  rename(income = income_composition_of_resources,
+         per_expend = percentage_expenditure,
+         to_expend = total_expenditure,
+         death5 = under_five_deaths,
+         thin5_9 = thinness_5_9_years,
+         thin1_19 = thinness_1_19_years)
+x_rename <- model.matrix(life_expectancy~., data_rename)[,-1]
+# vector of response
+names(data)
+featurePlot(x_rename, y, plot = "scatter", labels = c("","Y"),
             type = c("p"), 
             layout = c(3, 7)
             )
+par(cex = 0.7)
+corrplot(cor(x_rename), tl.srt = 45, order = 'hclust', type = 'upper')
+corrplot(cor(x), method='square')
 ```
 
 ### GAM
