@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(caret)
 library(tidyverse)
 library(mgcv)
+library(modelr)
 ```
 
 ```{r}
@@ -19,15 +20,22 @@ data = read.csv("./data/life_expectancy.csv") %>% as.tibble %>%
   na.omit() %>% 
   filter(year == 2013) %>% 
   select(-country, -year) 
+dim(data)
+data2 = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
+  janitor::clean_names() %>% 
+  na.omit() %>% 
+  filter(year == 2013 | year == 2009 | year == 2000) %>% 
+  select(-country, -year)
+
 data_all = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
   janitor::clean_names() %>% 
   na.omit() %>% 
-  select(-year) 
+  select(-year, -country) 
 
 ```
 
 ```{r}
-trRows = createDataPartition(data$life_expectancy, p = .90, list = FALSE)
+trRows = createFolds(data$life_expectancy, k = 10, list = FALSE)
 
 train_data = data[trRows,]
 test_data = data[-trRows,]
@@ -35,6 +43,7 @@ test_data = data[-trRows,]
 
 ### Scatter Plots
 ```{r}
+names(data)
 # matrix of predictors
 x <- model.matrix(life_expectancy~., data)[,-1]
 # vector of response
@@ -74,7 +83,7 @@ summary(fit.gamm)
 
 fit.gam1 = gam(data = data, 
               life_expectancy ~ 
-                status + s(adult_mortality) + s(infant_deaths) + s(alcohol) + s(percentage_expenditure) +
+                status + s(adult_mortality) + s(infant_deaths) + s(alcohol) +  s(percentage_expenditure) +
                 s(bmi) + s(under_five_deaths) +
                 s(total_expenditure) + s(diphtheria) + s(hiv_aids) + s(gdp) + s(population) +
                 s(thinness_1_19_years)
@@ -82,7 +91,7 @@ fit.gam1 = gam(data = data,
 summary(fit.gam1)
 
 fit.gam2 = gam(data = data, 
-              life_expectancy ~ 
+                life_expectancy ~ 
                 status + s(adult_mortality) + infant_deaths + s(alcohol) + s(percentage_expenditure) +
                 s(bmi) + under_five_deaths +
                 total_expenditure + diphtheria + s(hiv_aids) + gdp + s(population) +
@@ -91,6 +100,69 @@ fit.gam2 = gam(data = data,
 summary(fit.gam2)
 ```
 
+
+```{r}
+names(data)
+ctrl1 <- trainControl(method = "cv", number = 10)
+data2 = data_all %>% filter()
+x <- model.matrix(data = data, 
+                  life_expectancy ~ status + adult_mortality + infant_deaths + alcohol + percentage_expenditure + 
+                    hepatitis_b + measles + bmi + under_five_deaths + polio + diphtheria +
+                    hiv_aids + thinness_1_19_years + thinness_5_9_years + income_composition_of_resources +
+                    schooling)[,-1]
+
+x <- model.matrix(data = data2, 
+                  life_expectancy ~ status + adult_mortality + infant_deaths + alcohol + percentage_expenditure + 
+                    hepatitis_b + measles + bmi + under_five_deaths + polio + total_expenditure + diphtheria +
+                    hiv_aids + gdp + population + thinness_5_9_years + thinness_5_9_years + income_composition_of_resources +
+                    schooling)[,-1]
+
+y <- data2$life_expectancy
+set.seed(2)
+gam.fit <- train(x, y,
+                 method = "gam",
+                 tuneGrid = data.frame(method = "GCV.Cp", select = c(TRUE,FALSE)), 
+                 trControl = ctrl1)
+
+gam.fit$bestTune
+# using feature selection, you get a better model.
+
+gam.fit$finalModel
+# using feature selection, the covarate with df=0 is discarded.
+
+fit.gam2 = 
+  gam(data = data, 
+    life_expectancy ~ status + s(diphtheria) + s(polio) + 
+    s(schooling) + s(infant_deaths) + s(hiv_aids) + s(thinness_5_9_years) + 
+    s(under_five_deaths) + s(adult_mortality) + s(bmi) + s(income_composition_of_resources) + 
+    s(total_expenditure) + s(alcohol) + s(percentage_expenditure) + 
+    s(population) + s(gdp)
+  )
+summary(fit.gam2)
+
+fit.gam2 = 
+  gam(data = data, 
+    life_expectancy ~ status + s(hiv_aids) + s(diphtheria) + polio + 
+    infant_deaths + under_five_deaths + s(thinness_5_9_years) + 
+    s(schooling) + s(alcohol) + s(adult_mortality) + s(bmi) + 
+    s(income_composition_of_resources) + s(percentage_expenditure)
+  )
+summary(fit.gam2)
+```
+
+```{r}
+x <- model.matrix(data = data, 
+                  life_expectancy ~ status + adult_mortality + infant_deaths + alcohol + 
+                    hepatitis_b + measles + bmi + under_five_deaths + total_expenditure + diphtheria +
+                    hiv_aids + gdp + population + thinness_5_9_years + thinness_5_9_years + income_composition_of_resources +
+                    schooling)[,-1]
+y = data$life_expectancy
+gam.fit <- train(x, y,
+                 method = "gam",
+                 tuneGrid = data.frame(method = "GCV.Cp", select = c(TRUE,FALSE)), 
+                 trControl = ctrl1)
+gam.fit$finalModel
+```
 
 ```{r}
 # This is the final model for GAM
@@ -103,4 +175,83 @@ summary(fit.gam3)
 par(mfrow = c(3, 3))
 plot(fit.gam3)
 ```
+
+### MARS 
+```{r}
+mars_grid <- expand.grid(degree = 1:5, 
+                         nprune = 2:20)
+
+set.seed(2)
+mars.fit <- train(x, y,
+                 method = "earth",
+                 tuneGrid = mars_grid,
+                 trControl = ctrl1)
+
+ggplot(mars.fit)
+
+mars.fit$bestTune
+
+coef(mars.fit$finalModel) 
+```
+
+Final model of MARS
+```{r}
+# This is the final model of MARS
+fit_earth = 
+  earth(life_expectancy~.,
+        degree = 1,
+        nprune = 8,
+        data = data)
+summary(fit_earth)
+```
+
+## KNN
+```{r}
+ctrl2 <- trainControl(method = "cv", number = 20)
+knn.fit <- train(x, y,
+                 method = "knn",
+                 tuneLength = 80,
+                 trControl = ctrl2)
+knn.fit 
+
+knn.fit <- train(x, y,
+                 method = "knn",
+                 tuneLength = 100,
+                 trControl = ctrl2)
+knn.fit
+
+predict(knn.fit)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Cross-validation
+```{r}
+cv_df = 
+  crossv_mc(data, 10) %>% 
+  mutate(train = map(train, as_tibble),
+         test = map(test, as_tibble))
+cv_df = 
+cv_df %>% 
+  mutate(gam_mod = map(train, ~gam(data = .x, 
+              life_expectancy ~ 
+                s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) + s(total_expenditure) +
+                s(thinness_1_19_years) + s(schooling) + s(income_composition_of_resources)
+              ))) %>% 
+  mutate(rmse_gam = map2_dbl(gam_mod, test, ~rmse(model = .x, data = .y)))
+```
+
 

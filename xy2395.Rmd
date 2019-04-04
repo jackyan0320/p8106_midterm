@@ -33,5 +33,9 @@ age_2013 <-
 age_2013 %>% 
   select(thinness_1_19_years)
 age_2013 %>% skimr::skim()
+na.omit(age_2013) %>% dim
+
+age %>% filter(year == 2013) %>% na.omit() %>% nrow
+
 ```
 

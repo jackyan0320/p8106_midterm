@@ -17,7 +17,7 @@ data_all = read.csv("./data/life_expectancy.csv") %>% as.tibble %>%
 ```
 
 ``` r
-trRows = createDataPartition(data$life_expectancy, p = .90, list = FALSE)
+trRows = createFolds(data$life_expectancy, k = 10, list = FALSE)
 
 train_data = data[trRows,]
 test_data = data[-trRows,]
@@ -130,3 +130,20 @@ plot(fit.gam3)
 ```
 
 ![](nonlinear_regression_files/figure-markdown_github/unnamed-chunk-6-1.png)
+
+Cross-validation
+
+``` r
+cv_df = 
+  crossv_mc(data, 10) %>% 
+  mutate(train = map(train, as_tibble),
+         test = map(test, as_tibble))
+cv_df = 
+cv_df %>% 
+  mutate(gam_mod = map(train, ~gam(data = .x, 
+              life_expectancy ~ 
+                s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) + s(total_expenditure) +
+                s(thinness_1_19_years) + s(schooling) + s(income_composition_of_resources)
+              ))) %>% 
+  mutate(rmse_gam = map2_dbl(gam_mod, test, ~rmse(model = .x, data = .y)))
+```
