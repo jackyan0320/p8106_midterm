@@ -89,7 +89,7 @@ lasso_test_mse
 pcr.fit = train(x = x_train, 
                 y = y_train,
                 method = "pcr",
-                tuneLength = length(train_data),
+                tuneLength = length(train_data-1),
                 trControl = ctrl1,
                 scale = TRUE)
 
