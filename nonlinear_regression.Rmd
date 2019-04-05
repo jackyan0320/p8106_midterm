@@ -30,9 +30,13 @@ data2 = read.csv("./data/life_expectancy.csv") %>% as.tibble %>%
 
 data_all = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
   janitor::clean_names() %>% 
-  na.omit() %>% 
-  select(-year, -country) 
+  na.omit() 
+  select(-year, -country)
 
+gam.fit <- train(x, y,
+                 method = "gam",
+                 tuneGrid = data.frame(method = "GCV.Cp", select = c(TRUE,FALSE)), 
+                 trControl = ctrl1)
 ```
 
 ```{r}
@@ -257,14 +261,21 @@ cv_df =
   crossv_mc(data, 10) %>% 
   mutate(train = map(train, as_tibble),
          test = map(test, as_tibble))
+
+mars_grid <- expand.grid(degree = 1:2, 
+                         nprune = 2:20)
+
 cv_df = 
-cv_df %>% 
-  mutate(gam_mod = map(train, ~gam(data = .x, 
-              life_expectancy ~ 
-                s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) + s(total_expenditure) +
-                s(thinness_1_19_years) + s(schooling) + s(income_composition_of_resources)
-              ))) %>% 
-  mutate(rmse_gam = map2_dbl(gam_mod, test, ~rmse(model = .x, data = .y)))
+  cv_df %>% 
+  mutate(earth_mod = map(train, ~train(data = .x,
+                 life_expectancy~.,
+                 method = "earth",
+                 tuneGrid = mars_grid,
+                 trControl = ctrl1)),
+         earth_tune = map(earth_mod, ~.$bestTune),
+         rmse_earth = map2_dbl(earth_mod, test, ~rmse(model = .x, data = .y))
+         ) 
+
 ```
 
 
