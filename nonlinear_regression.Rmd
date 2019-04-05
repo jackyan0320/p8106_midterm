@@ -257,6 +257,7 @@ predict(knn.fit)
 
 ## Cross-validation
 ```{r}
+
 cv_df = 
   crossv_mc(data, 10) %>% 
   mutate(train = map(train, as_tibble),
@@ -264,18 +265,33 @@ cv_df =
 
 mars_grid <- expand.grid(degree = 1:2, 
                          nprune = 2:20)
+ctrl2 <- trainControl(method = "cv", number = 20)
 
+# MARS
 cv_df = 
   cv_df %>% 
   mutate(earth_mod = map(train, ~train(data = .x,
                  life_expectancy~.,
                  method = "earth",
                  tuneGrid = mars_grid,
-                 trControl = ctrl1)),
+                 trControl = ctrl2)),
          earth_tune = map(earth_mod, ~.$bestTune),
          rmse_earth = map2_dbl(earth_mod, test, ~rmse(model = .x, data = .y))
          ) 
+# KNN
+cv_df = 
+  cv_df %>% 
+  mutate(knn_mod = map(train, ~train(data = .x,
+                 life_expectancy~.,
+                 method = "knn",
+                 tuneLength = 100,
+                 trControl = ctrl2)),
+         knn_tune = map(knn_mod, ~.$bestTune),
+         rmse_knn = map2_dbl(knn_mod, test, ~rmse(model = .x, data = .y))
+         ) 
 
+cv_df %>% pull(earth_tune)
+cv_df %>% pull(knn_tune)
 ```
 
 
