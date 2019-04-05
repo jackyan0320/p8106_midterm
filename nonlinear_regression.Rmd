@@ -257,16 +257,22 @@ predict(knn.fit)
 
 ## Cross-validation
 ```{r}
-
+set.seed(123123)
 cv_df = 
   crossv_mc(data, 10) %>% 
   mutate(train = map(train, as_tibble),
          test = map(test, as_tibble))
+# cv_df =  
+#   cv_df %>%  
+#   mutate(train_x = map(train, ~model.matrix(life_expectancy~., .x)[,-1])) %>% 
+#   mutate(train_y = map(train, ~.x$life_expectancy)) %>% 
+#   mutate(test_x = map(test, ~model.matrix(life_expectancy~., .x)[,-1])) %>% 
+#   mutate(test_y = map(test, ~.x$life_expectancy))  
 
 mars_grid <- expand.grid(degree = 1:2, 
                          nprune = 2:20)
+ctrl1 = trainControl(method = "cv", number = 10)
 ctrl2 <- trainControl(method = "cv", number = 20)
-
 # MARS
 cv_df = 
   cv_df %>% 
@@ -274,14 +280,15 @@ cv_df =
                  life_expectancy~.,
                  method = "earth",
                  tuneGrid = mars_grid,
-                 trControl = ctrl2)),
+                 trControl = ctrl1)),
          earth_tune = map(earth_mod, ~.$bestTune),
          rmse_earth = map2_dbl(earth_mod, test, ~rmse(model = .x, data = .y))
          ) 
 # KNN
 cv_df = 
   cv_df %>% 
-  mutate(knn_mod = map(train, ~train(data = .x,
+  mutate(knn_mod = map(train, 
+                ~train(data = .x,
                  life_expectancy~.,
                  method = "knn",
                  tuneLength = 100,
@@ -292,6 +299,55 @@ cv_df =
 
 cv_df %>% pull(earth_tune)
 cv_df %>% pull(knn_tune)
+
+# LM
+cv_df = 
+  cv_df %>% 
+  mutate(lm_mod = map(train, ~lm(life_expectancy~., data = .x)),
+         rmse_lm = map2_dbl(lm_mod, test, ~rmse(model = .x, data = .y))) 
+# Ridge
+cv_df = 
+  cv_df %>% 
+  mutate(ridge_mod = map(train, ~train(data = .x, 
+                  life_expectancy~.,
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 0, lambda = exp(seq(-1, 1, length=100))),
+                  trControl = ctrl1)),
+         rmse_ridge = map2_dbl(ridge_mod, test, ~rmse(model = .x, data = .y)))
+
+# The lasso
+cv_df = 
+  cv_df %>% 
+  mutate(lasso_mod = map(train, ~train(data = .x, 
+                  life_expectancy~.,
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 1, lambda = exp(seq(-5, 1, length=100))),
+                  trControl = ctrl1,
+                  preProc = c("center", "scale"))),
+         rmse_lasso = map2_dbl(lasso_mod, test, ~rmse(model = .x, data = .y)))
+
+# PCR
+
+cv_df = 
+  cv_df %>% 
+  mutate(pcr_mod = map(train, ~train(data = .x, 
+                  life_expectancy~.,
+                  method = "pcr",
+                  tuneGrid = data.frame(ncomp = seq(1:18)),
+                  trControl = ctrl1,
+                  scale = TRUE)),
+         rmse_pcr = map2_dbl(pcr_mod, test, ~rmse(model = .x, data = .y)))
+
+
+cv_df %>% 
+  select(rmse_earth, rmse_knn, rmse_lm, rmse_ridge, rmse_lasso, rmse_pcr)
+
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  gather(key = model, value = rmse) %>% 
+  mutate(model = str_replace(model, "rmse_", ""),
+         model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
 ```
 
 
