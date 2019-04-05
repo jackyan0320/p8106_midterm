@@ -1,0 +1,208 @@
+---
+title: "Predicting Country-Level Life Expectancy in 2013"
+author: "Jianghui Lin jl5172, Zixu Wang zw2541, Jack Yan xy2395"
+date: "4/5/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(tidyverse)
+library(mgcv)
+library(modelr)
+library(corrplot)
+library(earth)
+```
+
+```{r, include=FALSE}
+# Import data
+set.seed(123)
+data = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
+  janitor::clean_names() %>% 
+  na.omit() %>% 
+  filter(year == 2013) %>% 
+  select(-country, -year) 
+dim(data)
+data2 = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
+  janitor::clean_names() %>% 
+  na.omit() %>% 
+  filter(year == 2013 | year == 2009 | year == 2000) %>% 
+  select(-country, -year)
+
+data_all = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
+  janitor::clean_names() %>% 
+  na.omit() %>% 
+  select(-year, -country)
+```
+
+## Introduction
+
+This dataset includes the immunization factors, mortality factors, economic factors, social factors and other health-related factors from 193 countries in 2013.Although there have been a lot of studies undertaken in the past on factors affecting life expectancy considering demographic variables, income composition, and mortality rates. It was found that effect of immunization and human development index was not taken into account in the past. Hence, this gives the motivation to resolve both the factors stated previously by formulating a regression model based on linear regression and non-linear regression. Important immunization like Hepatitis B, Polio and Diphtheria will also be considered. 			
+       
+Since the observations this dataset is based on different countries, we can use the analysis results to determine which predicting factors contribute to lower life expectancy. This information would be helpful for government and related agencies to serve their residents better and thus improve their life expectancy. We decided to focus on data collected in 2013 and omit any observation with NA values. After cleaning, we have 130 valid observations.
+
+## Exploratory Data Analysis
+
+```{r, include=FALSE}
+x <- model.matrix(life_expectancy~., data)[,-1]
+y <- data$life_expectancy
+theme1 <- trellis.par.get()
+theme1$plot.symbol$col <- rgb(.2, .4, .2, .5) 
+theme1$plot.symbol$pch <- 16
+theme1$plot.line$col <- rgb(.8, .1, .1, 1) 
+theme1$plot.line$lwd <- 2
+theme1$strip.background$col <- rgb(.0, .2, .6, .2) 
+trellis.par.set(theme1)
+data_rename = data %>% 
+  rename(income = income_composition_of_resources,
+         per_expend = percentage_expenditure,
+         to_expend = total_expenditure,
+         death5 = under_five_deaths,
+         thin5_9 = thinness_5_9_years,
+         thin1_19 = thinness_1_19_years)
+x_rename <- model.matrix(life_expectancy~., data_rename)[,-1]
+```
+
+Check for correlation between variables:
+
+```{r, echo=FALSE}
+par(cex = 0.7)
+corrplot(cor(x_rename), tl.srt = 45, order = 'hclust', type = 'upper')
+```
+
+According to the correlation plot above, we have found several interesting correlations between different variables. For example, Hepatitis B (HepB) immunization coverage has strong positive correlation with Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage, Gross Domestic Product(GDP) has a strong positive correlation with Expenditure on health(per_expand) and BMI has a strong positive correlation with income, etc. We have determined to take care of these correlations in later analysis.
+
+Screening for near-zero variables: We haven’t found any near zero variables in our dataset. Therefore, we decided to continue further analysis on all variables.
+
+## Models
+
+Write some overall descriptions here.
+Since we only have 19 variables, we didn't do any variable selection steps and included all the predictors in our linear and non-linear models.
+
+### Non-linear Models
+
+#### _KNN_
+
+The tuning parameter k was chosen by 10-fold cross-validation. The importance of variables was obtained by `VarImp` function. The top 5 important variables are income_composition_of_resources, schooling, hiv_aids, adult_mortality, and ‘bmi’.
+
+#### _MARS_
+
+#### _GAM_
+
+### Linear Models
+
+We created four types of linear models here and the assumptions are showing below:
+
+* Linearity: The variables and response actually exhibit a linear relationship.
+
+* Independency: Observations should be independent.
+
+* Homoscedasticity: For each value of the predictor (x), the variance of the response(Y) should be the same.
+
+* Normality: For each value of the predictor (x), the distribution of the response(Y) is normal. The errors should be normally distributed.
+
+#### _Linear model using least square_
+
+#### _Ridge_
+
+#### _Lasso_
+
+#### _PCR_
+
+## Model Comparison
+
+```{r, include=FALSE}
+set.seed(123123)
+cv_df = 
+  crossv_mc(data, 10) %>% 
+  mutate(train = map(train, as_tibble),
+         test = map(test, as_tibble))
+# cv_df =  
+#   cv_df %>%  
+#   mutate(train_x = map(train, ~model.matrix(life_expectancy~., .x)[,-1])) %>% 
+#   mutate(train_y = map(train, ~.x$life_expectancy)) %>% 
+#   mutate(test_x = map(test, ~model.matrix(life_expectancy~., .x)[,-1])) %>% 
+#   mutate(test_y = map(test, ~.x$life_expectancy))  
+
+mars_grid <- expand.grid(degree = 1:2, 
+                         nprune = 2:20)
+ctrl1 = trainControl(method = "cv", number = 10)
+ctrl2 <- trainControl(method = "cv", number = 20)
+# MARS
+cv_df = 
+  cv_df %>% 
+  mutate(earth_mod = map(train, ~train(data = .x,
+                 life_expectancy~.,
+                 method = "earth",
+                 tuneGrid = mars_grid,
+                 trControl = ctrl1)),
+         earth_tune = map(earth_mod, ~.$bestTune),
+         rmse_earth = map2_dbl(earth_mod, test, ~rmse(model = .x, data = .y))
+         ) 
+# KNN
+cv_df = 
+  cv_df %>% 
+  mutate(knn_mod = map(train, 
+                ~train(data = .x,
+                 life_expectancy~.,
+                 method = "knn",
+                 tuneLength = 100,
+                 trControl = ctrl2)),
+         knn_tune = map(knn_mod, ~.$bestTune),
+         rmse_knn = map2_dbl(knn_mod, test, ~rmse(model = .x, data = .y))
+         ) 
+
+cv_df %>% pull(earth_tune)
+cv_df %>% pull(knn_tune)
+
+# LM
+cv_df = 
+  cv_df %>% 
+  mutate(lm_mod = map(train, ~lm(life_expectancy~., data = .x)),
+         rmse_lm = map2_dbl(lm_mod, test, ~rmse(model = .x, data = .y))) 
+# Ridge
+cv_df = 
+  cv_df %>% 
+  mutate(ridge_mod = map(train, ~train(data = .x, 
+                  life_expectancy~.,
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 0, lambda = exp(seq(-1, 1, length=100))),
+                  trControl = ctrl1)),
+         rmse_ridge = map2_dbl(ridge_mod, test, ~rmse(model = .x, data = .y)))
+
+# The lasso
+cv_df = 
+  cv_df %>% 
+  mutate(lasso_mod = map(train, ~train(data = .x, 
+                  life_expectancy~.,
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 1, lambda = exp(seq(-5, 1, length=100))),
+                  trControl = ctrl1,
+                  preProc = c("center", "scale"))),
+         rmse_lasso = map2_dbl(lasso_mod, test, ~rmse(model = .x, data = .y)))
+
+# PCR
+
+cv_df = 
+  cv_df %>% 
+  mutate(pcr_mod = map(train, ~train(data = .x, 
+                  life_expectancy~.,
+                  method = "pcr",
+                  tuneGrid = data.frame(ncomp = seq(1:18)),
+                  trControl = ctrl1,
+                  scale = TRUE)),
+         rmse_pcr = map2_dbl(pcr_mod, test, ~rmse(model = .x, data = .y)))
+```
+
+```{r, echo=FALSE}
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  gather(key = model, value = rmse) %>% 
+  mutate(model = str_replace(model, "rmse_", ""),
+         model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+```
+
+## Conclusions
+
