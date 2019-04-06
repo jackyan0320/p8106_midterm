@@ -84,8 +84,10 @@ Since we only have 19 variables, we didn't do any variable selection steps and i
 ### Non-linear Models
 
 #### _GAM_
+
+GAM was used to model the non-linear relation b/w predictors and response given by GAM, which might be closer to the truth than those given by the linear models. Due to the small sample size (n = 130) and large number of predictors (p = 19), if we were to use `caret::train` to do variable selection, the model would have more coefficients than data. Instead, we manually select significant variables from a subset of the 19 variables. The plot shows that `income_composition_of_resources`, `adult_mortality`, and `total_expenditure` are the most significant/ influential predictors.
 ```{r }
-## This plot shows the non-linear relation b/w predictors and response.
+
 fit.gam3 = gam(data = data, 
               life_expectancy ~ 
                 s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) + s(total_expenditure) +
