@@ -85,12 +85,12 @@ Since we only have 19 variables, we didn't do any variable selection steps and i
 
 #### _GAM_
 
-GAM was used to model the non-linear relation b/w predictors and response given by GAM, which might be closer to the truth than those given by the linear models. Due to the small sample size (n = 130) and large number of predictors (p = 19), if we were to use `caret::train` to do variable selection, the model would have more coefficients than data. Instead, we manually select significant variables from a subset of the 19 variables. The plot shows that `income_composition_of_resources`, `adult_mortality`, and `total_expenditure` are the most significant/ influential predictors.
-```{r }
+GAM was used to model the non-linear relation between predictors and response, which might be closer to the truth than those given by linear models. With our small sample size (n = 130) and large number of predictors (p = 19), it is impossible to use `caret::train` to do automatic variable selection, because the model would have more coefficients than data. Instead, we manually selected 8 most important variables from all the 19 variables according to GCV score. The plot shows that `income_composition_of_resources`, `adult_mortality`, and `total_expenditure` are the most influential non-linear predictors.
 
+```{r }
 fit.gam3 = gam(data = data, 
               life_expectancy ~ 
-                s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) + s(total_expenditure) +
+                s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) +
                 s(thinness_1_19_years) + s(schooling) + s(income_composition_of_resources) + s(percentage_expenditure)
               )
 
@@ -99,10 +99,21 @@ plot(fit.gam3)
 ```
 
 #### _KNN_
+```{r}
+set.seed(123123)
+ctrl2 <- trainControl(method = "cv", number = 10)
+knn.fit <- train(x, y,
+                 method = "knn",
+                 tuneGrid = data.frame(k=c(1:length(y))),
+                 trControl = ctrl2)
+plot(knn.fit)
+knn.fit$bestTune
+```
 
-The tuning parameter k was chosen by 10-fold cross-validation. The importance of variables was obtained by `VarImp` function. The top 5 important variables are `income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`, and `bmi`.
+All the 19 predictors were included in the KNN model. The optimal tuning parameter k = `r knn.fit$bestTune` was chosen with minimum RMSE by 10-fold cross-validation. The importance of variables was obtained by `VarImp` function. Using all the data, the top 5 most important variables are `income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`, and `bmi`. 
 
 #### _MARS_
+
 
 
 
