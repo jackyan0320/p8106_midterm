@@ -54,7 +54,8 @@ theme1$plot.line$col <- rgb(.8, .1, .1, 1)
 theme1$plot.line$lwd <- 2
 theme1$strip.background$col <- rgb(.0, .2, .6, .2) 
 trellis.par.set(theme1)
-data_rename = data %>% 
+data_rename = 
+  data %>% 
   rename(income = income_composition_of_resources,
          per_expend = percentage_expenditure,
          to_expend = total_expenditure,
@@ -82,13 +83,26 @@ Since we only have 19 variables, we didn't do any variable selection steps and i
 
 ### Non-linear Models
 
+#### _GAM_
+```{r }
+## This plot shows the non-linear relation b/w predictors and response.
+fit.gam3 = gam(data = data, 
+              life_expectancy ~ 
+                s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) + s(total_expenditure) +
+                s(thinness_1_19_years) + s(schooling) + s(income_composition_of_resources) + s(percentage_expenditure)
+              )
+
+par(mfrow = c(3, 3))
+plot(fit.gam3)
+```
+
 #### _KNN_
 
-The tuning parameter k was chosen by 10-fold cross-validation. The importance of variables was obtained by `VarImp` function. The top 5 important variables are income_composition_of_resources, schooling, hiv_aids, adult_mortality, and ‘bmi’.
+The tuning parameter k was chosen by 10-fold cross-validation. The importance of variables was obtained by `VarImp` function. The top 5 important variables are `income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`, and `bmi`.
 
 #### _MARS_
 
-#### _GAM_
+
 
 ### Linear Models
 
@@ -102,7 +116,7 @@ We created four types of linear models here and the assumptions are showing belo
 
 * Normality: For each value of the predictor (x), the distribution of the response(Y) is normal. The errors should be normally distributed.
 
-#### _Linear model using least square_
+#### _Linear model using least squares_
 
 #### _Ridge_
 
@@ -118,12 +132,6 @@ cv_df =
   crossv_mc(data, 10) %>% 
   mutate(train = map(train, as_tibble),
          test = map(test, as_tibble))
-# cv_df =  
-#   cv_df %>%  
-#   mutate(train_x = map(train, ~model.matrix(life_expectancy~., .x)[,-1])) %>% 
-#   mutate(train_y = map(train, ~.x$life_expectancy)) %>% 
-#   mutate(test_x = map(test, ~model.matrix(life_expectancy~., .x)[,-1])) %>% 
-#   mutate(test_y = map(test, ~.x$life_expectancy))  
 
 mars_grid <- expand.grid(degree = 1:2, 
                          nprune = 2:20)
@@ -132,13 +140,12 @@ ctrl2 <- trainControl(method = "cv", number = 20)
 # MARS
 cv_df = 
   cv_df %>% 
-  mutate(earth_mod = map(train, ~train(data = .x,
+  mutate(mars_mod = map(train, ~train(data = .x,
                  life_expectancy~.,
                  method = "earth",
                  tuneGrid = mars_grid,
                  trControl = ctrl1)),
-         earth_tune = map(earth_mod, ~.$bestTune),
-         rmse_earth = map2_dbl(earth_mod, test, ~rmse(model = .x, data = .y))
+         rmse_mars = map2_dbl(mars_mod, test, ~rmse(model = .x, data = .y))
          ) 
 # KNN
 cv_df = 
@@ -152,9 +159,6 @@ cv_df =
          knn_tune = map(knn_mod, ~.$bestTune),
          rmse_knn = map2_dbl(knn_mod, test, ~rmse(model = .x, data = .y))
          ) 
-
-cv_df %>% pull(earth_tune)
-cv_df %>% pull(knn_tune)
 
 # LM
 cv_df = 
@@ -183,7 +187,6 @@ cv_df =
          rmse_lasso = map2_dbl(lasso_mod, test, ~rmse(model = .x, data = .y)))
 
 # PCR
-
 cv_df = 
   cv_df %>% 
   mutate(pcr_mod = map(train, ~train(data = .x, 
@@ -193,15 +196,38 @@ cv_df =
                   trControl = ctrl1,
                   scale = TRUE)),
          rmse_pcr = map2_dbl(pcr_mod, test, ~rmse(model = .x, data = .y)))
+
+cv_df = 
+  cv_df %>% 
+  mutate(trrmse_mars = map2_dbl(mars_mod, train, ~rmse(model = .x, data = .y)),
+         trrmse_knn = map2_dbl(knn_mod, train, ~rmse(model = .x, data = .y)),
+         trrmse_lm = map2_dbl(lm_mod, train, ~rmse(model = .x, data = .y)),
+         trrmse_ridge = map2_dbl(ridge_mod, train, ~rmse(model = .x, data = .y)),
+         trrmse_lasso = map2_dbl(lasso_mod, train, ~rmse(model = .x, data = .y)),         
+         trrmse_pcr = map2_dbl(pcr_mod, train, ~rmse(model = .x, data = .y))) 
 ```
 
 ```{r, echo=FALSE}
-cv_df %>% 
+test_rmse = 
+  cv_df %>%  
   select(starts_with("rmse")) %>% 
   gather(key = model, value = rmse) %>% 
   mutate(model = str_replace(model, "rmse_", ""),
-         model = fct_inorder(model)) %>% 
-  ggplot(aes(x = model, y = rmse)) + geom_violin()
+         model = fct_inorder(model),
+         type = 'test') 
+
+tr_rmse = 
+  cv_df %>%  
+  select(starts_with("trrmse")) %>% 
+  gather(key = model, value = rmse) %>% 
+  mutate(model = str_replace(model, "trrmse_", ""),
+         model = fct_inorder(model),
+         type = 'train') 
+
+bind_rows(test_rmse, tr_rmse) %>% 
+  ggplot(aes(x = model, y = rmse, color=type)) + 
+    geom_violin() +
+    labs(title = "Training and Testing RMSE")
 ```
 
 ## Conclusions
