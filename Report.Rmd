@@ -113,8 +113,20 @@ knn.fit$bestTune
 All the 19 predictors were included in the KNN model. The optimal tuning parameter k = `r knn.fit$bestTune` was chosen with minimum RMSE by 10-fold cross-validation. The importance of variables was obtained by `VarImp` function. Using all the data, the top 5 most important variables are `income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`, and `bmi`. 
 
 #### _MARS_
+```{r}
+mars_grid <- expand.grid(degree = 1:5, 
+                         nprune = 2:20)
+ctrl1 = trainControl(method = "cv", number = 10)
+set.seed(123123)
+mars.fit <- train(x, y,
+                 method = "earth",
+                 tuneGrid = mars_grid,
+                 trControl = ctrl1)
 
+ggplot(mars.fit)
+```
 
+the degree of interactions 1 and the number of retained terms 6
 
 
 ### Linear Models
