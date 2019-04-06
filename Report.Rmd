@@ -13,6 +13,8 @@ library(mgcv)
 library(modelr)
 library(corrplot)
 library(earth)
+library(vip)
+library(pdp)
 ```
 
 ```{r, include=FALSE}
@@ -23,17 +25,6 @@ data = read.csv("./data/life_expectancy.csv") %>% as.tibble %>%
   na.omit() %>% 
   filter(year == 2013) %>% 
   select(-country, -year) 
-dim(data)
-data2 = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
-  janitor::clean_names() %>% 
-  na.omit() %>% 
-  filter(year == 2013 | year == 2009 | year == 2000) %>% 
-  select(-country, -year)
-
-data_all = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
-  janitor::clean_names() %>% 
-  na.omit() %>% 
-  select(-year, -country)
 ```
 
 ## Introduction
@@ -78,8 +69,9 @@ Screening for near-zero variables: We haven’t found any near zero variables in
 
 ## Models
 
-Write some overall descriptions here.
-Since we only have 19 variables, we didn't do any variable selection steps and included all the predictors in our linear and non-linear models.
+**Write some overall descriptions here.**
+
+Both non-linear models (GAM, KNN and MARS) and linear models (Ridge, lasso, and PCR) were built on all the data to analyse the relationship between life expenctancy and the predictors. 10-fold cross-validation was conducted to find the optimal tuning parameter(s) in KNN, MARS, Ridge, the lasso, and PCR. Since we only have 19 variables, we did not do any variable selection prior to model-building, and let the model decide which variables should be included. The only exception is for GAM, where the variables were selected manually based on GCV.
 
 ### Non-linear Models
 
@@ -87,7 +79,7 @@ Since we only have 19 variables, we didn't do any variable selection steps and i
 
 GAM was used to model the non-linear relation between predictors and response, which might be closer to the truth than those given by linear models. With our small sample size (n = 130) and large number of predictors (p = 19), it is impossible to use `caret::train` to do automatic variable selection, because the model would have more coefficients than data. Instead, we manually selected 8 most important variables from all the 19 variables according to GCV score. The plot shows that `income_composition_of_resources`, `adult_mortality`, and `total_expenditure` are the most influential non-linear predictors.
 
-```{r }
+```{r, echo=FALSE}
 fit.gam3 = gam(data = data, 
               life_expectancy ~ 
                 s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) +
@@ -99,7 +91,7 @@ plot(fit.gam3)
 ```
 
 #### _KNN_
-```{r}
+```{r, warning = FALSE, echo=FALSE}
 set.seed(123123)
 ctrl2 <- trainControl(method = "cv", number = 10)
 knn.fit <- train(x, y,
@@ -113,7 +105,7 @@ knn.fit$bestTune
 All the 19 predictors were included in the KNN model. The optimal tuning parameter k = `r knn.fit$bestTune` was chosen with minimum RMSE by 10-fold cross-validation. The importance of variables was obtained by `VarImp` function. Using all the data, the top 5 most important variables are `income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`, and `bmi`. 
 
 #### _MARS_
-```{r}
+```{r, echo = FALSE}
 mars_grid <- expand.grid(degree = 1:5, 
                          nprune = 2:20)
 ctrl1 = trainControl(method = "cv", number = 10)
@@ -122,16 +114,25 @@ mars.fit <- train(x, y,
                  method = "earth",
                  tuneGrid = mars_grid,
                  trControl = ctrl1)
-
+# tunning parameter selection for MARS
 ggplot(mars.fit)
+
+# Importance plot for predictors included in the final model
+p1 <- vip(mars.fit, num_features = 8, bar = FALSE, value = "gcv") + ggtitle("GCV")
+p2 <- vip(mars.fit, num_features = 8, bar = FALSE, value = "rss") + ggtitle("RSS")
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+# partial dependence plots (PDPs) for `income_composition_of_resources` and `adult_mortality`
+p3 <- pdp::partial(mars.fit, pred.var = "income_composition_of_resources", grid.resolution = 10) %>% autoplot()
+p4 <- pdp::partial(mars.fit, pred.var = "adult_mortality", grid.resolution = 10) %>% autoplot()
+gridExtra::grid.arrange(p3, p4,  ncol = 3)
 ```
 
-the degree of interactions 1 and the number of retained terms 6
-
+Using 10-fold cross-validation, we found the optimal model with 6 retained terms and 1 degree of interaction. Among the 6 retained variables, `income_composition_of_resources` and `adult_mortality` contribute most to the reduction of residual sums of squares (RSS) and GCV score.
 
 ### Linear Models
 
-We created four types of linear models here and the assumptions are showing below:
+We created four types of linear models here and the assumptions are shown below:
 
 * Linearity: The variables and response actually exhibit a linear relationship.
 
@@ -149,19 +150,33 @@ We created four types of linear models here and the assumptions are showing belo
 
 #### _PCR_
 
-## Model Comparison
+## Model Comparison By Cross-Validation
 
-```{r, include=FALSE}
+To compare model predictive performance, 10-fold cross-validation was performed. Tuning parameters were decided by 10-fold cross-validation using the training data set. RMSE was obtained using the testing data set.
+
+```{r, eval=FALSE, echo=FALSE}
 set.seed(123123)
 cv_df = 
-  crossv_mc(data, 10) %>% 
+  crossv_kfold(data, 10) %>% 
   mutate(train = map(train, as_tibble),
          test = map(test, as_tibble))
 
 mars_grid <- expand.grid(degree = 1:2, 
                          nprune = 2:20)
+
 ctrl1 = trainControl(method = "cv", number = 10)
 ctrl2 <- trainControl(method = "cv", number = 20)
+
+# GAM
+cv_df = 
+  cv_df %>% 
+  mutate(gam_mod = map(train, ~gam(data = .x, 
+              life_expectancy ~ 
+                s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) + s(total_expenditure) +
+                s(thinness_1_19_years) + s(schooling) + s(income_composition_of_resources) + s(percentage_expenditure))),
+         rmse_gam = map2_dbl(gam_mod, test, ~rmse(model = .x, data = .y))
+         ) 
+
 # MARS
 cv_df = 
   cv_df %>% 
@@ -224,15 +239,14 @@ cv_df =
 
 cv_df = 
   cv_df %>% 
-  mutate(trrmse_mars = map2_dbl(mars_mod, train, ~rmse(model = .x, data = .y)),
+  mutate(trrmse_gam = map2_dbl(gam_mod, train, ~rmse(model = .x, data = .y)),
+         trrmse_mars = map2_dbl(mars_mod, train, ~rmse(model = .x, data = .y)),
          trrmse_knn = map2_dbl(knn_mod, train, ~rmse(model = .x, data = .y)),
          trrmse_lm = map2_dbl(lm_mod, train, ~rmse(model = .x, data = .y)),
          trrmse_ridge = map2_dbl(ridge_mod, train, ~rmse(model = .x, data = .y)),
          trrmse_lasso = map2_dbl(lasso_mod, train, ~rmse(model = .x, data = .y)),         
-         trrmse_pcr = map2_dbl(pcr_mod, train, ~rmse(model = .x, data = .y))) 
-```
+         trrmse_pcr = map2_dbl(pcr_mod, train, ~rmse(model = .x, data = .y)))
 
-```{r, echo=FALSE}
 test_rmse = 
   cv_df %>%  
   select(starts_with("rmse")) %>% 
@@ -249,11 +263,29 @@ tr_rmse =
          model = fct_inorder(model),
          type = 'train') 
 
-bind_rows(test_rmse, tr_rmse) %>% 
+cv_result = 
+  bind_rows(test_rmse, tr_rmse) %>%
+  mutate(type = as_factor(type),
+         type = fct_relevel(type, 'train', 'test'), 
+         model = fct_inorder(model))
+
+saveRDS(cv_result, 'cv_result.rds')
+```
+
+```{r, echo=FALSE}
+cv_result = readRDS('cv_result.rds')
+cv_result %>% 
   ggplot(aes(x = model, y = rmse, color=type)) + 
-    geom_violin() +
+    geom_boxplot() +
     labs(title = "Training and Testing RMSE")
 ```
 
-## Conclusions
+The above plot shows the distribution of RMSE in the 10 folds. Among the nonlinear models, GAM fits the training data most closely, but MARS has the overall best prediction performance. The KNN model has both the highest training and the highest testing RMSE, showing lack of fit and predictability. The 4 linear models have similar performance, among which lasso has the lowest mean RMSE. Overall, MARS generates the lowest RMSE, so it has the best performance for our data. It is worth noting, however, that the range of RMSE for MARS model is wider than the linear models. Therefore, linear models may have a more stable performace than non-linear models for our data.
 
+## Discussion 
+**Interpretation and Importance of some predictors**
+
+**Limitations: **
+The data used to fit the models were a subset of longitudinal data for 193 countries during 2000-2015. For lack of knowledge in longitudinal data analysis, we only used the 2015 data. Although high correlation within each country was avoided and thus the independent assumption is valid, we might lose considerable useful information in the other years. 
+
+After omitting `NAs`, we only had 130 observations to fit models. Small number of observations is especially problematic for cross-validated variable selection in GAM, because the number of coefficients exceeds number of observations. To bypass this issue, we manually selected a small subset of variables into GAM. Using GAM, we could better understand the non-linear relationship between life expectancy and the predictor. However, this underestimates the test RMSE of GAM in the model comparision step, because we inevitably used prior information in the testing set to select variables.
