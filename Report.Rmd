@@ -341,7 +341,7 @@ After omitting `NAs`, we only had 130 observations to fit models. Small number o
 
 # Plots and tables 
 
-```{r corrplot, echo=FALSE}
+```{r corrplot, echo=FALSE, fig.align='center'}
 x <- model.matrix(life_expectancy~., data)[,-1]
 y <- data$life_expectancy
 theme1 <- trellis.par.get()
@@ -362,10 +362,10 @@ data_rename =
 x_rename <- model.matrix(life_expectancy~., data_rename)[,-1]
 
 par(cex = 0.7)
-corrplot(cor(x_rename), tl.srt = 45, order = 'hclust', type = 'upper', title = "Correlation between Variables")
+corrplot(cor(x_rename), tl.srt = 45, order = 'hclust', type = 'upper')
 ```
 
-```{r gam_fit_plot, echo=FALSE}
+```{r gam_fit_plot, echo=FALSE, fig.align='center'}
 fit.gam3 = gam(data = data, 
               life_expectancy ~ 
                 s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) +
@@ -376,7 +376,7 @@ par(mfrow = c(3, 3))
 plot(fit.gam3)
 ```
 
-```{r knn_tuning, warning = FALSE, echo=FALSE}
+```{r knn_tuning, warning = FALSE, echo=FALSE, fig.align='center'}
 set.seed(123123)
 ctrl2 <- trainControl(method = "cv", number = 10)
 knn.fit <- train(x, y,
@@ -386,7 +386,7 @@ knn.fit <- train(x, y,
 plot(knn.fit)
 ```
 
-```{r mars_tuning, echo = FALSE}
+```{r mars_tuning, echo = FALSE, fig.align='center'}
 mars_grid <- expand.grid(degree = 1:5, 
                          nprune = 2:20)
 ctrl1 = trainControl(method = "cv", number = 10)
@@ -409,7 +409,7 @@ p4 <- pdp::partial(mars.fit, pred.var = "adult_mortality", grid.resolution = 10)
 gridExtra::grid.arrange(p3, p4,  ncol = 3)
 ```
 
-```{r linear_tuning, fig.width=10, echo=FALSE}
+```{r linear_tuning, fig.width=10, echo=FALSE, fig.align='center'}
 p_ridge = ggplot(ridge.fit, xTrans = function(x) log(x)) +
           labs(title = "Tuning Parameters in RIDGE Model") 
 p_lasso = ggplot(lasso.fit, xTrans = function(x) log(x)) +
@@ -420,11 +420,10 @@ p_pcr = ggplot(pcr.fit, highlight = TRUE) + theme_bw() +
 p_ridge + p_lasso + p_pcr
 ```
 
-```{r cv_model_compare, echo=FALSE}
+```{r cv_model_compare, echo=FALSE, fig.align='center'}
 cv_result = readRDS('cv_result.rds')
 cv_result %>% 
   ggplot(aes(x = model, y = rmse, color=type)) + 
     geom_boxplot() +
-    labs(title = "Training and Testing RMSE") +
     theme_bw()
 ```
