@@ -39,13 +39,13 @@ We decided to focus on data collected in 2013 and omit any observation with NA v
 
 ## Exploratory Data Analysis
 
-According to the correlation plot above, we have found several interesting correlations between different variables. **(Figure 1)** For example, Hepatitis B (HepB) immunization coverage has strong positive correlation with Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage, Gross Domestic Product(GDP) has a strong positive correlation with Expenditure on health(per_expand) and BMI has a strong positive correlation with income, etc. We have determined to take care of these correlations in later analysis.
+According to the correlation plot above, we have found several interesting correlations between different variables **(Figure 1)**. For example, Hepatitis B (HepB) immunization coverage has strong positive correlation with Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage, Gross Domestic Product(GDP) has a strong positive correlation with Expenditure on health(per_expand) and BMI has a strong positive correlation with income, etc. We have determined to take care of these correlations in later analysis.
 
 We haven’t found any near zero variables in our dataset. Therefore, we decided to continue further analysis on all variables. We did not find any dependency problem in our dataset since we only have one binary variable 'status' among our predictors.
 
 ## Models
 
-Both non-linear models (GAM, KNN and MARS) and linear models (Ridge, lasso, and PCR) were built on all the data to analyse the relationship between life expenctancy and the predictors. 10-fold cross-validation was conducted to find the optimal tuning parameter(s) in KNN, MARS, Ridge, the lasso, and PCR. **(Figure 4, 5)** Since we only have 19 variables, we did not do any variable selection prior to model-building, and let the model decide which variables should be included. The only exception is for GAM, where the variables were selected manually based on GCV.
+Both non-linear models (GAM, KNN and MARS) and linear models (Ridge, lasso, and PCR) were built on all the data to analyse the relationship between life expenctancy and the predictors. 10-fold cross-validation was conducted to find the optimal tuning parameter(s) in KNN, MARS, Ridge, the lasso, and PCR **(Figure 4, 5)**. Since we only have 19 variables, we did not do any variable selection prior to model-building, and let the model decide which variables should be included. The only exception is for GAM, where the variables were selected manually based on GCV.
 
 ### Non-linear Models
 
@@ -79,7 +79,7 @@ We included all predictors for least square. The least square model is relativel
 
 #### _Ridge_
 
-All predictor were included. The tuning parameters were picked from a grid of $\lambda$ value from -1 to 1 with length=100. The 10-fold cross-validation was performed in order to pick the value of tuning parameter—the $\lambda$ with the smallest error **(Figure 5)**. Using the varlmp() function, we found that `income_composition_of_resources`, `status Developing`, `hiv_aids`, `schooling`, `total_expenditure` are more significant than other variables. 
+All predictor were included. The tuning parameters were picked from a grid of $\lambda$ value from -1 to 1 with length=100. The 10-fold cross-validation was performed in order to pick the value of tuning parameter—the $\lambda$ with the smallest error **(Figure 5)**. Using the varlmp() function, we found that `income_composition_of_resources`, `status Developing`, `hiv_aids`, `schooling`, `total_expenditure` are more important than other variables. 
 
 #### _Lasso_
 
@@ -264,12 +264,14 @@ cv_result %>%
 
 **Figure 6** shows the distribution of RMSE in the 10 folds. Among the nonlinear models, GAM fits the training data most closely, but MARS has the overall best prediction performance. The KNN model has both the highest training and the highest testing RMSE, showing lack of fit and predictability. The 4 linear models have similar performance, among which lasso has the lowest mean RMSE. Overall, MARS generates the lowest RMSE, so it has the best performance for our data. It is worth noting, however, that the range of RMSE for MARS model is wider than the linear models. Therefore, linear models may have a more stable performace than non-linear models for our data.
 
-## Discussion 
-**Interpretation and Importance of some predictors**
+## Conclusion 
 
-Among the four types of linear model, Lasso regression model has the best performance on the testing data. By checking the coefficient and importance of different variables, we found there exist a extremly strong positive relationship between `income_composition_of_resources` and `life_expectancy`. The increasing in income may highly enlongate the life expectancy.
+Based on our analaysis, `hiv_aids` (HIV/AIDS deaths per 1 000 live births), `income_composition_of_resources` (Human Development Index in terms of income composition of resources), as well as `total_expenditure` (General government expenditure on health as a percentage of total government expenditure) had greater impacts on the life expectancy. This result agrees with our assumption that human development index and immunization factors also serve as an imortant part to promote life expantacy.
 
-**Limitations: **
+Among the four types of linear model, Lasso regression model has the best performance on the testing data. By checking the coefficient and importance of different variables, we found there exist an extremly strong positive relationship between `income_composition_of_resources` and `life_expectancy`. The increase in income may highly enlongate life expectancy. Non-linear models may better capture the true relationship between predictors and outcome. The MARS model **(Figure 3)** found that when `income_composition_of_resources` exceeds 0.464, the increase of income composition has a less effect on the increase of life expectancy. Also, when `adult_mortality` exceeds 79, it has a stronger impact on the decrease of life expectancy. 
+
+## Discussion
+
 The data used to fit the models were a subset of longitudinal data for 193 countries during 2000-2015. For lack of knowledge in longitudinal data analysis, we only used the 2013 data. Although high correlation within each country was avoided and thus the independent assumption is valid, we might lose considerable useful information in the other years. 
 
 After omitting `NAs`, we only had 130 observations to fit models. Small number of observations is especially problematic for cross-validated variable selection in GAM, because the number of coefficients exceeds number of observations. To bypass this issue, we manually selected a small subset of variables into GAM. Using GAM, we could better understand the non-linear relationship between life expectancy and the predictor. However, this underestimates the test RMSE of GAM in the model comparision step, because we inevitably used prior information in the testing set to select variables.
