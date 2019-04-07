@@ -35,98 +35,31 @@ Although there have been a lot of studies undertaken in the past on factors affe
        
 This dataset includes the immunization factors, mortality factors, economic factors, social factors and other health-related factors from 193 countries in 2013. Since the observations this dataset is based on different countries, we can use the analysis results to determine which predicting factors contribute to lower life expectancy. Also, we use non-linear models to try to capture the relationship between predictors and life expectancy. This information would be helpful for government and related agencies to serve their residents better and thus improve their life expectancy. 
 
-We decided to focus on data collected in 2013 and omit any observation with NA values. After cleaning, we have 130 valid observations. Data are centered and scaled in the `caret` package when fitting the models.
+We decided to focus on data collected in 2013 and omit any observation with NA values (< 10%). After cleaning, we have 130 valid observations. Data are centered and scaled in the `caret` package when fitting the models.
 
 ## Exploratory Data Analysis
 
-```{r, include=FALSE, eval = F}
-x <- model.matrix(life_expectancy~., data)[,-1]
-y <- data$life_expectancy
-theme1 <- trellis.par.get()
-theme1$plot.symbol$col <- rgb(.2, .4, .2, .5) 
-theme1$plot.symbol$pch <- 16
-theme1$plot.line$col <- rgb(.8, .1, .1, 1) 
-theme1$plot.line$lwd <- 2
-theme1$strip.background$col <- rgb(.0, .2, .6, .2) 
-trellis.par.set(theme1)
-data_rename = 
-  data %>% 
-  rename(income = income_composition_of_resources,
-         per_expend = percentage_expenditure,
-         to_expend = total_expenditure,
-         death5 = under_five_deaths,
-         thin5_9 = thinness_5_9_years,
-         thin1_19 = thinness_1_19_years)
-x_rename <- model.matrix(life_expectancy~., data_rename)[,-1]
+According to the correlation plot above, we have found several interesting correlations between different variables. **(Figure 1)** For example, Hepatitis B (HepB) immunization coverage has strong positive correlation with Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage, Gross Domestic Product(GDP) has a strong positive correlation with Expenditure on health(per_expand) and BMI has a strong positive correlation with income, etc. We have determined to take care of these correlations in later analysis.
 
-par(cex = 0.7)
-corrplot(cor(x_rename), tl.srt = 45, order = 'hclust', type = 'upper', title = "Correlation between Variables")
-```
-
-According to the correlation plot above, we have found several interesting correlations between different variables. For example, Hepatitis B (HepB) immunization coverage has strong positive correlation with Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage, Gross Domestic Product(GDP) has a strong positive correlation with Expenditure on health(per_expand) and BMI has a strong positive correlation with income, etc. We have determined to take care of these correlations in later analysis.
-
-We haven’t found any near zero variables in our dataset. Therefore, we decided to continue further analysis on all variables.
+We haven’t found any near zero variables in our dataset. Therefore, we decided to continue further analysis on all variables. We did not find any dependency problem in our dataset since we only have one binary variable 'status' among our predictors.
 
 ## Models
 
-Both non-linear models (GAM, KNN and MARS) and linear models (Ridge, lasso, and PCR) were built on all the data to analyse the relationship between life expenctancy and the predictors. 10-fold cross-validation was conducted to find the optimal tuning parameter(s) in KNN, MARS, Ridge, the lasso, and PCR. Since we only have 19 variables, we did not do any variable selection prior to model-building, and let the model decide which variables should be included. The only exception is for GAM, where the variables were selected manually based on GCV.
+Both non-linear models (GAM, KNN and MARS) and linear models (Ridge, lasso, and PCR) were built on all the data to analyse the relationship between life expenctancy and the predictors. 10-fold cross-validation was conducted to find the optimal tuning parameter(s) in KNN, MARS, Ridge, the lasso, and PCR. **(Figure 4, 5)** Since we only have 19 variables, we did not do any variable selection prior to model-building, and let the model decide which variables should be included. The only exception is for GAM, where the variables were selected manually based on GCV.
 
 ### Non-linear Models
 
 #### _GAM_
 
-GAM was used to model the non-linear relation between predictors and response, which might be closer to the truth than those given by linear models. With our small sample size (n = 130) and large number of predictors (p = 19), it is impossible to use `caret::train` to do automatic variable selection, because the model would have more coefficients than data. Instead, we manually selected 8 most important variables from all the 19 variables according to GCV score. The plot shows that `income_composition_of_resources`, `adult_mortality`, and `total_expenditure` are the most influential non-linear predictors.
-
-```{r, echo=FALSE, eval = FALSE}
-fit.gam3 = gam(data = data, 
-              life_expectancy ~ 
-                s(adult_mortality) + s(bmi) + s(total_expenditure) + s(hiv_aids) +
-                s(thinness_1_19_years) + s(schooling) + s(income_composition_of_resources) + s(percentage_expenditure)
-              )
-
-par(mfrow = c(3, 3))
-plot(fit.gam3)
-```
+GAM was used to model the non-linear relation between predictors and response, which might be closer to the truth than those given by linear models. With our small sample size (n = 130) and large number of predictors (p = 19), it is impossible to use `caret::train` to do automatic variable selection, because the model would have more coefficients than data. Instead, we manually selected 8 most important variables from all the 19 variables according to GCV score. The plot shows that `income_composition_of_resources`, `adult_mortality`, and `total_expenditure` are the most influential non-linear predictors **(Figure 2)**.
 
 #### _KNN_
-```{r, warning = FALSE, echo = FALSE, eval=F}
-set.seed(123123)
-ctrl2 <- trainControl(method = "cv", number = 10)
-knn.fit <- train(x, y,
-                 method = "knn",
-                 tuneGrid = data.frame(k=c(1:length(y))),
-                 trControl = ctrl2)
-plot(knn.fit)
-knn.fit$bestTune
-```
 
-All the 19 predictors were included in the KNN model. The optimal tuning parameter k = 6 was chosen with minimum RMSE by 10-fold cross-validation. The importance of variables was obtained by `VarImp` function. Using all the data, the top 5 most important variables are `income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`, and `bmi`. 
+All the 19 predictors were included in the KNN model. The optimal tuning parameter k = 6 was chosen with minimum RMSE by 10-fold cross-validation **(Figure 4)**. The importance of variables was obtained by `VarImp` function. Using all the data, the top 5 most important variables are `income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`, and `bmi`. 
 
 #### _MARS_
-```{r, echo = FALSE, eval = FALSE}
-mars_grid <- expand.grid(degree = 1:5, 
-                         nprune = 2:20)
-ctrl1 = trainControl(method = "cv", number = 10)
-set.seed(123123)
-mars.fit <- train(x, y,
-                 method = "earth",
-                 tuneGrid = mars_grid,
-                 trControl = ctrl1)
-# tunning parameter selection for MARS
-#ggplot(mars.fit)
 
-# Importance plot for predictors included in the final model
-# p1 <- vip(mars.fit, num_features = 8, bar = FALSE, value = "gcv") + ggtitle("GCV")
-# p2 <- vip(mars.fit, num_features = 8, bar = FALSE, value = "rss") + ggtitle("RSS")
-# gridExtra::grid.arrange(p1, p2, ncol = 2)
-
-# partial dependence plots (PDPs) for `income_composition_of_resources` and `adult_mortality`
-p3 <- pdp::partial(mars.fit, pred.var = "income_composition_of_resources", grid.resolution = 10) %>% autoplot()
-p4 <- pdp::partial(mars.fit, pred.var = "adult_mortality", grid.resolution = 10) %>% autoplot()
-gridExtra::grid.arrange(p3, p4,  ncol = 3)
-```
-
-Using 10-fold cross-validation, we found the optimal model with 6 retained terms and 1 degree of interaction. Among the 6 retained variables, `income_composition_of_resources` and `adult_mortality` contribute most to the reduction of residual sums of squares (RSS) and GCV score.
+Using 10-fold cross-validation, we found the optimal model with 6 retained terms and 1 degree of interaction **(Figure 4)**. Among the 6 retained variables, `income_composition_of_resources` and `adult_mortality` contribute most to the reduction of residual sums of squares (RSS) and GCV score. The relationships of the 2 predictors and life expectancy are shown in **(Figure 3)**.
 
 ### Linear Models
 
@@ -142,19 +75,19 @@ We created four types of linear models here and the assumptions are shown below:
 
 #### _Linear model using least squares_
 
-We included all predictors for least square. The least square model is relatively simple and applicable which based on maximum-likelihood solution. The best linear unbiased estimators can be obtained if Gauss-Markov conditions applied. By checking the p-value (test of whether each coefficient equals to zero) of each predictor, we found first significant predictors are `hiv_aids` and `income_composition_of_resources`, second significant predictor is `total_expenditure`. 
+We included all predictors for least square. The least square model is relatively simple and applicable which is based on maximum-likelihood estimation The best linear unbiased estimators can be obtained if Gauss-Markov conditions are applied. By checking the p-value (test of whether each coefficient equals to zero) of each predictor, we found that thre most significant predictors are `hiv_aids` and `income_composition_of_resources`.
 
 #### _Ridge_
 
-All predictor variables were included. The tuning parameters were picked from a grid of $\lambda$ value from -1 to 1 with length=100. The 10-fold cross-validation was performed in order to pick the value of tuning parameter—the $\lambda$ with the smallest error. Using the varlmp() function, we found that `income_composition_of_resources`, `status Developing`, `hiv_aids`, `schooling`, `total_expenditure` are more significant than other variables. 
+All predictor were included. The tuning parameters were picked from a grid of $\lambda$ value from -1 to 1 with length=100. The 10-fold cross-validation was performed in order to pick the value of tuning parameter—the $\lambda$ with the smallest error **(Figure 5)**. Using the varlmp() function, we found that `income_composition_of_resources`, `status Developing`, `hiv_aids`, `schooling`, `total_expenditure` are more significant than other variables. 
 
 #### _Lasso_
 
-All predictor variables were included. The 10-fold cross-validation was performed in order to pick the value of tuning parameter—the $\lambda$ with the smallest error. Only 9 of 19 variables were involved in this model, and the variables like `income_composition_of_resources`, `hiv_aids` and `total_expenditure` are considered more significant than the other predictors.
+All predictor variables were included. The 10-fold cross-validation was performed in order to pick the value of tuning parameter—the $\lambda$ with the smallest error **(Figure 5)**. Only 9 of 19 variables were involved in this model, and the variables like `income_composition_of_resources`, `hiv_aids` and `total_expenditure` are considered more significant than the other predictors.
 
 #### _PCR_
 
-All predictor variables were included. The 10-fold cross-validation was performed in order to pick the value of tuning parameter with the smallest error. The significant variables in PCR include `Income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`.
+All predictor variables were included. The 10-fold cross-validation was performed in order to pick the value of tuning parameter with the smallest error **(Figure 5)**. The significant variables in PCR include `Income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`.
 
 ```{r, include=FALSE}
 # ridge regression model
@@ -329,7 +262,7 @@ cv_result %>%
     labs(title = "Training and Testing RMSE")
 ```
 
-The above plot shows the distribution of RMSE in the 10 folds. Among the nonlinear models, GAM fits the training data most closely, but MARS has the overall best prediction performance. The KNN model has both the highest training and the highest testing RMSE, showing lack of fit and predictability. The 4 linear models have similar performance, among which lasso has the lowest mean RMSE. Overall, MARS generates the lowest RMSE, so it has the best performance for our data. It is worth noting, however, that the range of RMSE for MARS model is wider than the linear models. Therefore, linear models may have a more stable performace than non-linear models for our data.
+**Figure 6** shows the distribution of RMSE in the 10 folds. Among the nonlinear models, GAM fits the training data most closely, but MARS has the overall best prediction performance. The KNN model has both the highest training and the highest testing RMSE, showing lack of fit and predictability. The 4 linear models have similar performance, among which lasso has the lowest mean RMSE. Overall, MARS generates the lowest RMSE, so it has the best performance for our data. It is worth noting, however, that the range of RMSE for MARS model is wider than the linear models. Therefore, linear models may have a more stable performace than non-linear models for our data.
 
 ## Discussion 
 **Interpretation and Importance of some predictors**
@@ -431,7 +364,7 @@ p_pcr = ggplot(pcr.fit, highlight = TRUE) + theme_bw() +
 p_ridge + p_lasso + p_pcr
 ```
 
-\center __Figure 4__ Tuning parameter selection for linear models  \center
+\center __Figure 5__ Tuning parameter selection for linear models  \center
 
 ```{r cv_model_compare, echo=FALSE, fig.align='center'}
 cv_result = readRDS('cv_result.rds')
@@ -441,4 +374,4 @@ cv_result %>%
     theme_bw()
 ```
 
-\center **Figure 5** Model comparision based on RMSE  \center
+\center __Figure 6__ Model comparision based on RMSE  \center
