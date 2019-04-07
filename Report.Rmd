@@ -177,7 +177,8 @@ lasso.fit = train(x = x_all,
                   method = "glmnet",
                   tuneGrid = expand.grid(alpha = 1, 
                                          lambda = exp(seq(-5, 3, length=100))),
-                  trControl = ctrl1)
+                  trControl = ctrl1,
+                  preProc = c("center", "scale"))
 
 # PCR model
 pcr.fit = train(x = x_all, 
