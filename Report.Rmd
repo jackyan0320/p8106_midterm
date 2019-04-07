@@ -177,7 +177,7 @@ lasso.fit = train(x = x_all,
                                          lambda = exp(seq(-5, 3, length=100))),
                   trControl = ctrl1,
                   preProc = c("center", "scale"))
-
+varImp(lasso.fit)
 # PCR model
 pcr.fit = train(x = x_all, 
                 y = y_all,
@@ -332,6 +332,8 @@ The above plot shows the distribution of RMSE in the 10 folds. Among the nonline
 
 ## Discussion 
 **Interpretation and Importance of some predictors**
+
+Among the four types of linear model, Lasso regression model has the best performance on the testing data. By checking the coefficient and importance of different variables, we found there exist a extremly strong positive relationship between `income_composition_of_resources` and `life_expectancy`. The increasing in income may highly enlongate the life expectancy.
 
 **Limitations: **
 The data used to fit the models were a subset of longitudinal data for 193 countries during 2000-2015. For lack of knowledge in longitudinal data analysis, we only used the 2015 data. Although high correlation within each country was avoided and thus the independent assumption is valid, we might lose considerable useful information in the other years. 
