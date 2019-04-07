@@ -114,12 +114,12 @@ mars.fit <- train(x, y,
                  tuneGrid = mars_grid,
                  trControl = ctrl1)
 # tunning parameter selection for MARS
-ggplot(mars.fit)
+#ggplot(mars.fit)
 
 # Importance plot for predictors included in the final model
-p1 <- vip(mars.fit, num_features = 8, bar = FALSE, value = "gcv") + ggtitle("GCV")
-p2 <- vip(mars.fit, num_features = 8, bar = FALSE, value = "rss") + ggtitle("RSS")
-gridExtra::grid.arrange(p1, p2, ncol = 2)
+# p1 <- vip(mars.fit, num_features = 8, bar = FALSE, value = "gcv") + ggtitle("GCV")
+# p2 <- vip(mars.fit, num_features = 8, bar = FALSE, value = "rss") + ggtitle("RSS")
+# gridExtra::grid.arrange(p1, p2, ncol = 2)
 
 # partial dependence plots (PDPs) for `income_composition_of_resources` and `adult_mortality`
 p3 <- pdp::partial(mars.fit, pred.var = "income_composition_of_resources", grid.resolution = 10) %>% autoplot()
