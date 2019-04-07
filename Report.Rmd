@@ -15,6 +15,7 @@ library(corrplot)
 library(earth)
 library(vip)
 library(pdp)
+library(patchwork)
 ```
 
 ```{r, include=FALSE}
@@ -56,11 +57,9 @@ data_rename =
 x_rename <- model.matrix(life_expectancy~., data_rename)[,-1]
 ```
 
-Check for correlation between variables:
-
 ```{r, echo=FALSE}
 par(cex = 0.7)
-corrplot(cor(x_rename), tl.srt = 45, order = 'hclust', type = 'upper')
+corrplot(cor(x_rename), tl.srt = 45, order = 'hclust', type = 'upper', title = "Correlation between Variables")
 ```
 
 According to the correlation plot above, we have found several interesting correlations between different variables. For example, Hepatitis B (HepB) immunization coverage has strong positive correlation with Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage, Gross Domestic Product(GDP) has a strong positive correlation with Expenditure on health(per_expand) and BMI has a strong positive correlation with income, etc. We have determined to take care of these correlations in later analysis.
@@ -144,11 +143,61 @@ We created four types of linear models here and the assumptions are shown below:
 
 #### _Linear model using least squares_
 
+We included all predictors for least square. The least square model is relatively simple and applicable which based on maximum-likelihood solution. The best linear unbiased estimators can be obtained if Gauss-Markov conditions applied. By checking the p-value (test of whether each coefficient equals to zero) of each predictor, we found first significant predictors are `hiv_aids` and `income_composition_of_resources`, second significant predictor is `total_expenditure`. 
+
 #### _Ridge_
+
+All predictor variables were included. The tuning parameters were picked from a grid of $\lambda$ value from -1 to 1 with length=100. The 10-fold cross-validation was performed in order to pick the value of tuning parameter—the $\lambda$ with the smallest error. Using the varlmp() function, we found that `income_composition_of_resources`, `status Developing`, `hiv_aids`, `schooling`, `total_expenditure` are more significant than other variables. 
 
 #### _Lasso_
 
+All predictor variables were included. The 10-fold cross-validation was performed in order to pick the value of tuning parameter—the $\lambda$ with the smallest error. Only 9 of 19 variables were involved in this model, and the variables like `income_composition_of_resources`, `hiv_aids` and `total_expenditure` are considered more significant than the other predictors.
+
 #### _PCR_
+
+All predictor variables were included. The 10-fold cross-validation was performed in order to pick the value of tuning parameter with the smallest error. The significant variables in PCR include `Income_composition_of_resources`, `schooling`, `hiv_aids`, `adult_mortality`.
+
+```{r, include=FALSE}
+# ridge regression model
+x_all = model.matrix(life_expectancy~., data)[,-1]
+y_all = data$life_expectancy
+
+ctrl1 = trainControl(method = "cv", number = 10)
+
+ridge.fit = train(x = x_all, 
+                  y = y_all,
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 0, 
+                                         lambda = exp(seq(-1, 1, length=100))),
+                  trControl = ctrl1)
+
+# lasso regression model
+lasso.fit = train(x = x_all, 
+                  y = y_all,
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 1, 
+                                         lambda = exp(seq(-5, 3, length=100))),
+                  trControl = ctrl1)
+
+# PCR model
+pcr.fit = train(x = x_all, 
+                y = y_all,
+                method = "pcr",
+                tuneLength = length(data),
+                trControl = ctrl1,
+                scale = TRUE)
+```
+
+```{r, fig.width=10, echo=FALSE}
+p_ridge = ggplot(ridge.fit, xTrans = function(x) log(x)) +
+          labs(title = "Tuning Parameters in RIDGE Model") 
+p_lasso = ggplot(lasso.fit, xTrans = function(x) log(x)) +
+          labs(title = "Tuning Parameters in LASSO Model")
+p_pcr = ggplot(pcr.fit, highlight = TRUE) + theme_bw() + 
+        labs(title = "Tuning parameters in PCR Model")
+
+p_ridge + p_lasso + p_pcr
+```
 
 ## Model Comparison By Cross-Validation
 
