@@ -23,16 +23,19 @@ library(patchwork)
 set.seed(123)
 data = read.csv("./data/life_expectancy.csv") %>% as.tibble %>% 
   janitor::clean_names() %>% 
-  na.omit() %>% 
   filter(year == 2013) %>% 
+  na.omit() %>% 
   select(-country, -year) 
+
 ```
 
 ## Introduction
 
-This dataset includes the immunization factors, mortality factors, economic factors, social factors and other health-related factors from 193 countries in 2013.Although there have been a lot of studies undertaken in the past on factors affecting life expectancy considering demographic variables, income composition, and mortality rates. It was found that effect of immunization and human development index was not taken into account in the past. Hence, this gives the motivation to resolve both the factors stated previously by formulating a regression model based on linear regression and non-linear regression. Important immunization like Hepatitis B, Polio and Diphtheria will also be considered. 			
+Although there have been a lot of studies undertaken in the past on factors affecting life expectancy considering demographic variables, income composition, and mortality rates, it was found that effect of immunization and human development index was not taken into account in the past. Hence, this gives the motivation to resolve both the factors stated previously by formulating a regression model based on linear regression and non-linear regression. Important immunization like Hepatitis B, Polio and Diphtheria will also be considered. 			
        
-Since the observations this dataset is based on different countries, we can use the analysis results to determine which predicting factors contribute to lower life expectancy. This information would be helpful for government and related agencies to serve their residents better and thus improve their life expectancy. We decided to focus on data collected in 2013 and omit any observation with NA values. After cleaning, we have 130 valid observations.
+This dataset includes the immunization factors, mortality factors, economic factors, social factors and other health-related factors from 193 countries in 2013. Since the observations this dataset is based on different countries, we can use the analysis results to determine which predicting factors contribute to lower life expectancy. Also, we use non-linear models to try to capture the relationship between predictors and life expectancy. This information would be helpful for government and related agencies to serve their residents better and thus improve their life expectancy. 
+
+We decided to focus on data collected in 2013 and omit any observation with NA values. After cleaning, we have 130 valid observations. Data are centered and scaled in the `caret` package when fitting the models.
 
 ## Exploratory Data Analysis
 
@@ -62,11 +65,9 @@ corrplot(cor(x_rename), tl.srt = 45, order = 'hclust', type = 'upper', title = "
 
 According to the correlation plot above, we have found several interesting correlations between different variables. For example, Hepatitis B (HepB) immunization coverage has strong positive correlation with Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage, Gross Domestic Product(GDP) has a strong positive correlation with Expenditure on health(per_expand) and BMI has a strong positive correlation with income, etc. We have determined to take care of these correlations in later analysis.
 
-Screening for near-zero variables: We haven’t found any near zero variables in our dataset. Therefore, we decided to continue further analysis on all variables.
+We haven’t found any near zero variables in our dataset. Therefore, we decided to continue further analysis on all variables.
 
 ## Models
-
-**Write some overall descriptions here.**
 
 Both non-linear models (GAM, KNN and MARS) and linear models (Ridge, lasso, and PCR) were built on all the data to analyse the relationship between life expenctancy and the predictors. 10-fold cross-validation was conducted to find the optimal tuning parameter(s) in KNN, MARS, Ridge, the lasso, and PCR. Since we only have 19 variables, we did not do any variable selection prior to model-building, and let the model decide which variables should be included. The only exception is for GAM, where the variables were selected manually based on GCV.
 
@@ -336,7 +337,7 @@ The above plot shows the distribution of RMSE in the 10 folds. Among the nonline
 Among the four types of linear model, Lasso regression model has the best performance on the testing data. By checking the coefficient and importance of different variables, we found there exist a extremly strong positive relationship between `income_composition_of_resources` and `life_expectancy`. The increasing in income may highly enlongate the life expectancy.
 
 **Limitations: **
-The data used to fit the models were a subset of longitudinal data for 193 countries during 2000-2015. For lack of knowledge in longitudinal data analysis, we only used the 2015 data. Although high correlation within each country was avoided and thus the independent assumption is valid, we might lose considerable useful information in the other years. 
+The data used to fit the models were a subset of longitudinal data for 193 countries during 2000-2015. For lack of knowledge in longitudinal data analysis, we only used the 2013 data. Although high correlation within each country was avoided and thus the independent assumption is valid, we might lose considerable useful information in the other years. 
 
 After omitting `NAs`, we only had 130 observations to fit models. Small number of observations is especially problematic for cross-validated variable selection in GAM, because the number of coefficients exceeds number of observations. To bypass this issue, we manually selected a small subset of variables into GAM. Using GAM, we could better understand the non-linear relationship between life expectancy and the predictor. However, this underestimates the test RMSE of GAM in the model comparision step, because we inevitably used prior information in the testing set to select variables.
 
