@@ -365,6 +365,8 @@ par(cex = 0.7)
 corrplot(cor(x_rename), tl.srt = 45, order = 'hclust', type = 'upper')
 ```
 
+\center __Figure 1__ Correlation among predictors \center
+
 ```{r gam_fit_plot, echo=FALSE, fig.align='center'}
 fit.gam3 = gam(data = data, 
               life_expectancy ~ 
@@ -376,15 +378,7 @@ par(mfrow = c(3, 3))
 plot(fit.gam3)
 ```
 
-```{r knn_tuning, warning = FALSE, echo=FALSE, fig.align='center'}
-set.seed(123123)
-ctrl2 <- trainControl(method = "cv", number = 10)
-knn.fit <- train(x, y,
-                 method = "knn",
-                 tuneGrid = data.frame(k=c(1:length(y))),
-                 trControl = ctrl2)
-plot(knn.fit)
-```
+\center __Figure 2__ Non-linear Relationship between predictors and life expectancy in GAM \center
 
 ```{r mars_tuning, echo = FALSE, fig.align='center'}
 mars_grid <- expand.grid(degree = 1:5, 
@@ -409,6 +403,20 @@ p4 <- pdp::partial(mars.fit, pred.var = "adult_mortality", grid.resolution = 10)
 gridExtra::grid.arrange(p3, p4,  ncol = 3)
 ```
 
+\center __Figure 3__ Non-linear Relationship between 2 major predictors and life expectancy in MARS \center
+
+```{r nonlinear_tuning, warning = FALSE, echo=FALSE, fig.align='center'}
+set.seed(123123)
+ctrl2 <- trainControl(method = "cv", number = 10)
+knn.fit <- train(x, y,
+                 method = "knn",
+                 tuneGrid = data.frame(k=c(1:length(y))),
+                 trControl = ctrl2)
+ggplot(mars.fit) + ggplot(knn.fit) + theme_bw()
+```
+
+\center __Figure 4__ Tuning parameter selection for non-linear models  \center
+
 ```{r linear_tuning, fig.width=10, echo=FALSE, fig.align='center'}
 p_ridge = ggplot(ridge.fit, xTrans = function(x) log(x)) +
           labs(title = "Tuning Parameters in RIDGE Model") 
@@ -420,6 +428,8 @@ p_pcr = ggplot(pcr.fit, highlight = TRUE) + theme_bw() +
 p_ridge + p_lasso + p_pcr
 ```
 
+\center __Figure 4__ Tuning parameter selection for linear models  \center
+
 ```{r cv_model_compare, echo=FALSE, fig.align='center'}
 cv_result = readRDS('cv_result.rds')
 cv_result %>% 
@@ -427,3 +437,5 @@ cv_result %>%
     geom_boxplot() +
     theme_bw()
 ```
+
+\center **Figure 5** Model comparision based on RMSE  \center
