@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.align = 'center')
 library(caret)
 library(tidyverse)
 library(mgcv)
@@ -341,7 +341,7 @@ After omitting `NAs`, we only had 130 observations to fit models. Small number o
 
 # Plots and tables 
 
-```{r corrplot, include=FALSE}
+```{r corrplot, echo=FALSE}
 x <- model.matrix(life_expectancy~., data)[,-1]
 y <- data$life_expectancy
 theme1 <- trellis.par.get()
@@ -384,7 +384,6 @@ knn.fit <- train(x, y,
                  tuneGrid = data.frame(k=c(1:length(y))),
                  trControl = ctrl2)
 plot(knn.fit)
-knn.fit$bestTune
 ```
 
 ```{r mars_tuning, echo = FALSE}
@@ -426,6 +425,6 @@ cv_result = readRDS('cv_result.rds')
 cv_result %>% 
   ggplot(aes(x = model, y = rmse, color=type)) + 
     geom_boxplot() +
-    labs(title = "Training and Testing RMSE")+
+    labs(title = "Training and Testing RMSE") +
     theme_bw()
 ```
